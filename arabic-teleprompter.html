@@ -171,7 +171,7 @@
 
       <div>
         <label>Ably API Key</label>
-        <input type="text" id="ablyKeyInput" placeholder="xxxxx.xxxxx:xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false"/>
+        <input type="text" id="ablyKeyInput" placeholder="xxxxx.xxxxx:xxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="url"/>
         <div class="setup-hint">
           احصل على مفتاحك المجاني من
           <a href="https://ably.com" target="_blank">ably.com</a>
@@ -637,8 +637,36 @@ remoteBtn.addEventListener('click',()=>{
   showSetup();
 });
 
+// Strip ALL whitespace and invisible chars from API key
+function sanitizeKey(raw){
+  return raw.replace(/[\s\u200B\u200C\u200D\uFEFF\u00A0]/g,'').trim();
+}
+
+// Auto-clean on paste and on blur
+ablyKeyInput.addEventListener('paste', e=>{
+  e.preventDefault();
+  const pasted = (e.clipboardData||window.clipboardData).getData('text');
+  ablyKeyInput.value = sanitizeKey(pasted);
+});
+ablyKeyInput.addEventListener('blur', ()=>{
+  ablyKeyInput.value = sanitizeKey(ablyKeyInput.value);
+});
+
+// Show a preview so user can verify the key looks right
+ablyKeyInput.addEventListener('input', ()=>{
+  const clean = sanitizeKey(ablyKeyInput.value);
+  const parts = clean.split(':');
+  if(parts.length===2 && parts[0].includes('.') && parts[1].length > 10){
+    ablyKeyInput.style.borderColor = 'var(--green)';
+  } else if(clean.length > 5){
+    ablyKeyInput.style.borderColor = 'var(--red)';
+  } else {
+    ablyKeyInput.style.borderColor = '';
+  }
+});
+
 connectRemoteBtn.addEventListener('click',()=>{
-  const key=ablyKeyInput.value.trim();
+  const key=sanitizeKey(ablyKeyInput.value);
   const session=sessionInput.value.trim();
   if(!key||!session){alert('أدخل المفتاح وكود الجلسة');return;}
   connectAbly(key,session);

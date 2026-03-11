@@ -118,7 +118,7 @@
 
     <div>
       <label>Ably API Key</label>
-      <input type="text" id="keyInput" placeholder="xxxxx.xxxxx:xxxxxxxxxxxxxxxxxxxx" autocomplete="off"/>
+    <input type="text" id="keyInput" placeholder="xxxxx.xxxxx:xxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="url"/>
     </div>
 
     <div>
@@ -219,8 +219,30 @@ if(savedKey) keyInput.value=savedKey;
 if(savedSess) sessInput.value=savedSess;
 
 // ── CONNECT ───────────────────────────────────────────────
+function sanitizeKey(raw){
+  return raw.replace(/[\s\u200B\u200C\u200D\uFEFF\u00A0]/g,'').trim();
+}
+
+keyInput.addEventListener('paste', e=>{
+  e.preventDefault();
+  const pasted=(e.clipboardData||window.clipboardData).getData('text');
+  keyInput.value=sanitizeKey(pasted);
+});
+keyInput.addEventListener('blur',()=>{ keyInput.value=sanitizeKey(keyInput.value); });
+keyInput.addEventListener('input',()=>{
+  const clean=sanitizeKey(keyInput.value);
+  const parts=clean.split(':');
+  if(parts.length===2&&parts[0].includes('.')&&parts[1].length>10){
+    keyInput.style.borderColor='#5ce08a';
+  } else if(clean.length>5){
+    keyInput.style.borderColor='#e05c5c';
+  } else {
+    keyInput.style.borderColor='';
+  }
+});
+
 connectBtn.addEventListener('click',()=>{
-  const key  = keyInput.value.trim();
+  const key  = sanitizeKey(keyInput.value);
   const sess = sessInput.value.trim();
   if(!key||!sess){alert('أدخل المفتاح وكود الجلسة');return;}
   connect(key,sess);
