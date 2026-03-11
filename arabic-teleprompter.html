@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مُوجِّه النص العربي</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24;
+    --gold:#c9a84c; --gold-dim:rgba(201,168,76,0.13);
+    --text:#f0ead8; --text-dim:rgba(240,234,216,0.35);
+    --spoken:rgba(240,234,216,0.12);
+    --glow:rgba(201,168,76,0.22);
+    --red:#e05c5c; --green:#5ce08a;
+    --border:rgba(201,168,76,0.16);
+    --blue:#5c9ce0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;overflow:hidden;}
+  body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+
+  .header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;gap:8px;flex-wrap:wrap;}
+  .logo{font-family:'Amiri',serif;font-size:1.2rem;color:var(--gold);white-space:nowrap;}
+  .logo span{color:var(--text-dim);font-size:0.7rem;font-family:'Tajawal',sans-serif;margin-right:6px;}
+  .controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+
+  .btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'Tajawal',sans-serif;font-size:0.82rem;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+  .btn:hover{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
+  .btn.active{background:var(--gold);border-color:var(--gold);color:#0a0a0f;font-weight:700;}
+  .btn.stop{background:var(--red);border-color:var(--red);color:#fff;}
+  .btn.blue{background:rgba(92,156,224,0.15);border-color:var(--blue);color:var(--blue);}
+  .btn.blue.active{background:var(--blue);color:#0a0a0f;}
+  .btn svg{width:14px;height:14px;flex-shrink:0;}
+
+  select.ctl{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:0.8rem;padding:5px 7px;cursor:pointer;outline:none;direction:rtl;}
+  select.ctl option{background:var(--surface);}
+
+  .font-wrap{display:flex;gap:3px;}
+  .fbtn{width:26px;height:26px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);cursor:pointer;font-size:0.78rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+  .fbtn:hover{border-color:var(--gold);color:var(--gold);}
+
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);transition:all 0.3s;flex-shrink:0;}
+  .dot.on{background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.1s ease-in-out infinite;}
+  .dot.wait{background:var(--gold);box-shadow:0 0 5px var(--gold);}
+  .dot.remote{background:var(--blue);box-shadow:0 0 8px var(--blue);}
+  @keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}
+
+  .main{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;}
+
+  /* SETUP PANEL */
+  .setup{display:none;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:30px;gap:20px;}
+  .setup.vis{display:flex;}
+  .setup-card{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:28px 32px;max-width:500px;width:100%;display:flex;flex-direction:column;gap:16px;}
+  .setup-card h2{font-family:'Amiri',serif;color:var(--gold);font-size:1.3rem;text-align:center;}
+  .setup-card p{color:var(--text-dim);font-size:0.83rem;line-height:1.7;text-align:center;}
+  .setup-card label{color:var(--text-dim);font-size:0.78rem;display:block;margin-bottom:4px;}
+  .setup-card input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:0.9rem;padding:10px 14px;outline:none;direction:ltr;}
+  .setup-card input:focus{border-color:var(--gold);}
+  .setup-card input::placeholder{color:var(--text-dim);opacity:0.5;}
+  .setup-hint{font-size:0.72rem;color:var(--text-dim);margin-top:-8px;}
+  .setup-hint a{color:var(--blue);text-decoration:none;}
+  .setup-hint a:hover{text-decoration:underline;}
+  .setup-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+
+  .edit{display:none;flex-direction:column;height:100%;padding:20px;gap:12px;}
+  .edit.vis{display:flex;}
+  .edit label{color:var(--gold);font-size:0.8rem;}
+  .edit textarea{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Amiri',serif;font-size:1.3rem;line-height:2;padding:14px 18px;resize:none;outline:none;direction:rtl;text-align:right;}
+  .edit textarea:focus{border-color:var(--gold);}
+  .edit textarea::placeholder{color:var(--text-dim);font-size:1rem;}
+  .edit-actions{display:flex;gap:8px;}
+
+  .prompter{display:none;flex:1;min-height:0;position:relative;overflow:hidden;}
+  .prompter.vis{display:block;}
+
+  .fade-t,.fade-b{position:absolute;left:0;right:0;z-index:10;pointer-events:none;}
+  .fade-t{top:0;height:22%;background:linear-gradient(to bottom,var(--bg),transparent);}
+  .fade-b{bottom:0;height:30%;background:linear-gradient(to top,var(--bg),transparent);}
+
+  .rline{position:absolute;left:5%;right:5%;top:38%;height:2px;
+    background:linear-gradient(90deg,transparent,var(--gold) 12%,var(--gold) 88%,transparent);
+    opacity:.4;z-index:20;pointer-events:none;}
+
+  .tape{position:absolute;top:0;left:0;right:0;will-change:transform;}
+
+  .line{
+    font-family:'Amiri',serif;direction:rtl;text-align:right;
+    padding:11px 8%;
+    transition:color 0.25s,opacity 0.25s,text-shadow 0.25s;
+    color:var(--text-dim);opacity:0.36;
+    cursor:pointer;user-select:none;
+  }
+  .line.done   {color:var(--spoken);opacity:0.14;}
+  .line.current{color:var(--gold);opacity:1;text-shadow:0 0 28px var(--glow);}
+  .line.next   {color:var(--text);opacity:0.6;}
+
+  .sbar{padding:6px 20px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:0.73rem;color:var(--text-dim);flex-shrink:0;gap:8px;}
+  .pbar{flex:1;max-width:150px;height:2px;background:var(--border);border-radius:1px;overflow:hidden;}
+  .pfill{height:100%;background:var(--gold);width:0%;transition:width 0.4s;}
+  kbd{background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-size:0.67rem;margin:0 1px;}
+
+  /* Remote badge */
+  .remote-badge{
+    position:fixed;top:60px;left:50%;transform:translateX(-50%);
+    background:rgba(92,156,224,0.15);border:1px solid var(--blue);
+    border-radius:20px;padding:4px 14px;font-size:0.75rem;color:var(--blue);
+    z-index:100;pointer-events:none;opacity:0;transition:opacity 0.3s;
+    white-space:nowrap;
+  }
+  .remote-badge.vis{opacity:1;}
+
+  .debug{
+    position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+    background:rgba(10,10,15,0.9);border:1px solid var(--border);
+    border-radius:8px;padding:5px 16px;font-size:0.78rem;color:rgba(201,168,76,0.85);
+    direction:rtl;max-width:90%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    z-index:30;pointer-events:none;opacity:0;transition:opacity 0.2s;
+  }
+  .debug.vis{opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">مُوجِّه <span>Arabic Teleprompter</span></div>
+  <div class="controls">
+
+    <select class="ctl" id="dialect">
+      <option value="ar-SA">عربي فصيح</option>
+      <option value="ar-EG">مصري</option>
+      <option value="ar-AE">خليجي</option>
+    </select>
+
+    <div class="font-wrap">
+      <button class="fbtn" id="fdn">A−</button>
+      <button class="fbtn" id="fup">A+</button>
+    </div>
+
+    <button class="btn blue" id="remoteBtn" title="Remote control via phone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M8 6h8M8 10h4"/></svg>
+      ريموت
+    </button>
+
+    <button class="btn" id="mirrorBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 9l3-3m0 0l3 3M6 6v12M21 9l-3-3m0 0l-3 3M18 6v12"/></svg>
+      مرآة
+    </button>
+
+    <button class="btn" id="editBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      تعديل النص
+    </button>
+
+    <div class="dot" id="dot"></div>
+
+    <button class="btn" id="micBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      ابدأ الاستماع
+    </button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- SETUP PANEL -->
+  <div class="setup" id="setupPanel">
+    <div class="setup-card">
+      <h2>🔗 إعداد التحكم عن بُعد</h2>
+      <p>أدخل مفتاح Ably API لربط هاتفك بالشاشة عبر الإنترنت</p>
+
+      <div>
+        <label>Ably API Key</label>
+        <input type="text" id="ablyKeyInput" placeholder="xxxxx.xxxxx:xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false"/>
+        <div class="setup-hint">
+          احصل على مفتاحك المجاني من
+          <a href="https://ably.com" target="_blank">ably.com</a>
+          ← Create App ← API Keys
+        </div>
+      </div>
+
+      <div>
+        <label>كود الجلسة (اختر أي رقم)</label>
+        <input type="text" id="sessionInput" placeholder="مثال: 1234" maxlength="20" autocomplete="off"/>
+        <div class="setup-hint">نفس الكود يجب أن يُدخَل في صفحة الريموت على هاتفك</div>
+      </div>
+
+      <div class="setup-actions">
+        <button class="btn active" id="connectRemoteBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          اتصل
+        </button>
+        <button class="btn" id="cancelSetupBtn">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT -->
+  <div class="edit vis" id="editPanel">
+    <label>أدخل نصك هنا — كل سطر سيضيء بالكامل عند قراءته</label>
+    <textarea id="ta" placeholder="اكتب أو الصق نصك هنا...
+
+مثال:
+لو عندك صاحب وعايز تشتغل معاه اقرأ الكلام دا الأول
+أنا خسرت صداقتين بسبب الشراكة
+مش لأنو الشغل فشل
+لأنو الفلوس والتوقعات غيّرت كل حاجة
+قبل الشراكة بتتكلمو براحة"></textarea>
+    <div class="edit-actions">
+      <button class="btn active" id="startBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        ابدأ المؤجِّه
+      </button>
+      <button class="btn" id="clearBtn">مسح</button>
+    </div>
+  </div>
+
+  <!-- PROMPTER -->
+  <div class="prompter" id="prompter">
+    <div class="fade-t"></div>
+    <div class="fade-b"></div>
+    <div class="rline"></div>
+    <div class="tape" id="tape"></div>
+    <div class="debug" id="debug"></div>
+  </div>
+
+</div>
+
+<div class="sbar">
+  <span id="statusLbl">أضف نصك واضغط "ابدأ المؤجِّه"</span>
+  <div class="pbar"><div class="pfill" id="pfill"></div></div>
+  <span id="lineCount">—</span>
+  <span><kbd>Space</kbd>تشغيل <kbd>↑↓</kbd>تنقل</span>
+</div>
+
+<!-- Remote action badge -->
+<div class="remote-badge" id="remoteBadge">📱 أمر من الريموت</div>
+
+<!-- Ably SDK -->
+<script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════════════════
+const READING_RATIO = 0.38;
+const CHUNK         = 9;
+const MIN_GAP_MS    = 250;
+const MATCH_RATIO   = 0.35;
+const BUF_MAX       = 120;
+
+const STOPWORDS = new Set([
+  'في','من','على','إلى','عن','مع','هذا','هذه','ذلك','التي','الذي',
+  'أن','لا','ما','هو','هي','كل','قد','لو','دا','ده','دي','انا','انت',
+  'مش','كان','ان','هم','هن','نحن','انتم','وان','عند','بدل','بدون'
+]);
+
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+let lines       = [];
+let curLine     = 0;
+let fontSize    = 2.6;
+let tapeY       = 0;
+let targetY     = 0;
+let rafId       = null;
+let isListening = false;
+let recognition = null;
+let mirrored    = false;
+let buffer      = [];
+let lastAdvance = 0;
+let drainTimer  = null;
+
+// Remote
+let ablyClient  = null;
+let ablyChannel = null;
+let remoteConnected = false;
+
+// ══════════════════════════════════════════════════════════
+//  ELEMENTS
+// ══════════════════════════════════════════════════════════
+const editPanel   = document.getElementById('editPanel');
+const setupPanel  = document.getElementById('setupPanel');
+const prompterEl  = document.getElementById('prompter');
+const tape        = document.getElementById('tape');
+const ta          = document.getElementById('ta');
+const micBtn      = document.getElementById('micBtn');
+const editBtn     = document.getElementById('editBtn');
+const startBtn    = document.getElementById('startBtn');
+const clearBtn    = document.getElementById('clearBtn');
+const mirrorBtn   = document.getElementById('mirrorBtn');
+const remoteBtn   = document.getElementById('remoteBtn');
+const dot         = document.getElementById('dot');
+const statusLbl   = document.getElementById('statusLbl');
+const pfill       = document.getElementById('pfill');
+const lineCount   = document.getElementById('lineCount');
+const dialectSel  = document.getElementById('dialect');
+const fup         = document.getElementById('fup');
+const fdn         = document.getElementById('fdn');
+const debugEl     = document.getElementById('debug');
+const remoteBadge = document.getElementById('remoteBadge');
+// Setup
+const ablyKeyInput      = document.getElementById('ablyKeyInput');
+const sessionInput      = document.getElementById('sessionInput');
+const connectRemoteBtn  = document.getElementById('connectRemoteBtn');
+const cancelSetupBtn    = document.getElementById('cancelSetupBtn');
+
+// ══════════════════════════════════════════════════════════
+//  ARABIC UTILS
+// ══════════════════════════════════════════════════════════
+function norm(w) {
+  return w
+    .replace(/[\u064B-\u065F\u0670\u0640]/g,'')
+    .replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه')
+    .replace(/ى/g,'ي').replace(/ؤ/g,'و').replace(/ئ/g,'ي')
+    .trim();
+}
+const PREFIXES=['وال','فال','بال','كال','ال','وا','فا','و','ف','ل','ب','ك'];
+function allForms(w){
+  const s=new Set([w]);
+  for(const p of PREFIXES) if(w.startsWith(p)&&w.length-p.length>=2) s.add(w.slice(p.length));
+  return [...s];
+}
+function tokenise(text){
+  return(text.match(/[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]{2,}/g)||[])
+    .map(norm).filter(w=>w.length>=2);
+}
+function isMeaningful(w){ return w.length>=3&&!STOPWORDS.has(w); }
+function wordsMatch(a,b){
+  for(const x of allForms(a)) for(const y of allForms(b)){
+    if(x===y) return true;
+    const sh=x.length<=y.length?x:y, lg=x.length>y.length?x:y;
+    if(sh.length>=3&&lg.startsWith(sh)) return true;
+    if(sh.length>=4&&lg.includes(sh))   return true;
+  }
+  return false;
+}
+function lineMatches(lineWords,buf){
+  const m=lineWords.filter(isMeaningful);
+  if(!m.length) return true;
+  return m.filter(lw=>buf.some(bw=>wordsMatch(bw,lw))).length/m.length>=MATCH_RATIO;
+}
+function consumeLine(lineWords,buf){
+  const m=lineWords.filter(isMeaningful);
+  let r=[...buf];
+  for(const lw of m){const i=r.findIndex(bw=>wordsMatch(bw,lw));if(i!==-1)r.splice(i,1);}
+  return r;
+}
+
+// ══════════════════════════════════════════════════════════
+//  DRAIN LOOP
+// ══════════════════════════════════════════════════════════
+function scheduleDrain(){clearTimeout(drainTimer);drainStep();}
+function drainStep(){
+  if(curLine>=lines.length) return;
+  if(!lineMatches(lines[curLine].words,buffer)) return;
+  const wait=Math.max(0,MIN_GAP_MS-(Date.now()-lastAdvance));
+  drainTimer=setTimeout(()=>{
+    if(curLine>=lines.length||!lineMatches(lines[curLine].words,buffer)) return;
+    buffer=consumeLine(lines[curLine].words,buffer);
+    lastAdvance=Date.now();
+    curLine=Math.min(curLine+1,lines.length);
+    applyHL(false);
+    drainStep();
+  },wait);
+}
+
+// ══════════════════════════════════════════════════════════
+//  BUILD
+// ══════════════════════════════════════════════════════════
+function build(){
+  tape.innerHTML=''; lines=[]; curLine=0;
+  tapeY=0; targetY=0; lastAdvance=0; buffer=[];
+  clearTimeout(drainTimer);
+  tape.style.transform='translateY(0px)';
+  const raw=ta.value.trim();
+  if(!raw){lineCount.textContent='—';return;}
+  raw.split(/\n+/).map(l=>l.trim()).filter(Boolean).forEach(para=>{
+    const rw=para.match(/\S+/g)||[];
+    if(!rw.length) return;
+    if(rw.length<=CHUNK){pushLine(para,tokenise(para));}
+    else{for(let i=0;i<rw.length;i+=CHUNK){const c=rw.slice(i,i+CHUNK).join(' ');pushLine(c,tokenise(c));}}
+  });
+  lineCount.textContent=lines.length+' سطر';
+  let n=0;const r=()=>{applyHL(true);if(++n<6)requestAnimationFrame(r);};
+  requestAnimationFrame(r);
+}
+function pushLine(display,normWords){
+  const el=document.createElement('div');
+  el.className='line';el.style.fontSize=fontSize+'rem';
+  el.textContent=display;el.dataset.idx=lines.length;
+  tape.appendChild(el);
+  lines.push({display,words:normWords,el});
+}
+
+// ══════════════════════════════════════════════════════════
+//  HIGHLIGHT + SCROLL
+// ══════════════════════════════════════════════════════════
+function applyHL(instant){
+  lines.forEach((l,i)=>{
+    l.el.className='line';
+    if(i<curLine)        l.el.classList.add('done');
+    else if(i===curLine) l.el.classList.add('current');
+    else if(i===curLine+1)l.el.classList.add('next');
+  });
+  pfill.style.width=lines.length?(curLine/lines.length*100)+'%':'0%';
+  recompute();
+  if(instant){tapeY=targetY;setTransform();}
+  else kickRaf();
+  // Broadcast state to remote
+  publishState();
+}
+function recompute(){
+  if(!lines.length) return;
+  const el=lines[Math.min(curLine,lines.length-1)].el;
+  const pR=prompterEl.getBoundingClientRect();
+  const eR=el.getBoundingClientRect();
+  targetY=tapeY+(pR.height*READING_RATIO-(eR.top-pR.top+eR.height/2));
+}
+function kickRaf(){if(!rafId)rafId=requestAnimationFrame(rafStep);}
+function rafStep(){
+  const d=targetY-tapeY;
+  const gap=Math.abs(d);
+  if(gap<0.5){tapeY=targetY;setTransform();rafId=null;return;}
+  if(gap>250){tapeY=targetY;setTransform();rafId=null;return;}
+  tapeY+=d*(gap>120?0.22:0.10);
+  setTransform();
+  rafId=requestAnimationFrame(rafStep);
+}
+function setTransform(){
+  tape.style.transform=`translateY(${tapeY}px) scaleX(${mirrored?-1:1})`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  REMOTE — ABLY
+// ══════════════════════════════════════════════════════════
+function connectAbly(apiKey, sessionCode){
+  if(ablyClient){
+    try{ablyClient.close();}catch(e){}
+    ablyClient=null; ablyChannel=null;
+  }
+
+  try {
+    ablyClient = new Ably.Realtime({
+      key: apiKey,
+      autoConnect: true
+    });
+
+    const channelName = 'teleprompter-' + sessionCode.trim();
+    ablyChannel = ablyClient.channels.get(channelName);
+
+    ablyClient.connection.on('connected', ()=>{
+      remoteConnected = true;
+      remoteBtn.classList.add('active');
+      dot.className='dot remote';
+      setStatus('متصل بالريموت ✓ — في انتظار أوامر الهاتف');
+      // Save to localStorage for next time
+      localStorage.setItem('ably_key', apiKey);
+      localStorage.setItem('ably_session', sessionCode);
+    });
+
+    ablyClient.connection.on('disconnected', ()=>{
+      remoteConnected = false;
+      remoteBtn.classList.remove('active');
+      dot.className='dot';
+    });
+
+    ablyClient.connection.on('failed', ()=>{
+      remoteConnected = false;
+      remoteBtn.classList.remove('active');
+      alert('فشل الاتصال — تحقق من مفتاح Ably');
+    });
+
+    // Listen for commands FROM the remote (phone)
+    ablyChannel.subscribe('cmd', (msg)=>{
+      handleRemoteCommand(msg.data);
+    });
+
+  } catch(e) {
+    alert('خطأ في الاتصال: ' + e.message);
+  }
+}
+
+function handleRemoteCommand(cmd){
+  showRemoteBadge();
+  switch(cmd.action){
+    case 'start_mic':
+      if(!isListening) startListen();
+      break;
+    case 'stop_mic':
+      if(isListening) stopListen();
+      break;
+    case 'toggle_mic':
+      isListening ? stopListen() : startListen();
+      break;
+    case 'next':
+      if(curLine<lines.length-1){curLine++;buffer=[];applyHL(false);}
+      break;
+    case 'prev':
+      if(curLine>0){curLine--;buffer=[];applyHL(false);}
+      break;
+    case 'home':
+      curLine=0;buffer=[];applyHL(false);
+      break;
+    case 'jump':
+      if(typeof cmd.line==='number'&&cmd.line>=0&&cmd.line<lines.length){
+        curLine=cmd.line;buffer=[];applyHL(false);
+      }
+      break;
+    case 'set_text':
+      if(cmd.text){ta.value=cmd.text;showPrompter();}
+      break;
+    case 'ping':
+      publishState(); // respond with current state
+      break;
+  }
+}
+
+function publishState(){
+  if(!ablyChannel||!remoteConnected) return;
+  ablyChannel.publish('state', {
+    curLine,
+    total: lines.length,
+    listening: isListening,
+    preview: lines[curLine]?.display || '',
+    nextPreview: lines[curLine+1]?.display || '',
+  }).catch(()=>{});
+}
+
+function showRemoteBadge(){
+  remoteBadge.classList.add('vis');
+  clearTimeout(remoteBadge._t);
+  remoteBadge._t=setTimeout(()=>remoteBadge.classList.remove('vis'),1200);
+}
+
+function disconnectAbly(){
+  if(ablyClient){try{ablyClient.close();}catch(e){}ablyClient=null;ablyChannel=null;}
+  remoteConnected=false;
+  remoteBtn.classList.remove('active');
+  dot.className='dot';
+}
+
+// ══════════════════════════════════════════════════════════
+//  SPEECH
+// ══════════════════════════════════════════════════════════
+function startListen(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('يرجى استخدام Google Chrome');return;}
+  recognition=new SR();
+  recognition.lang=dialectSel.value;
+  recognition.continuous=true;
+  recognition.interimResults=true;
+  recognition.maxAlternatives=2;
+  recognition.onstart=()=>{isListening=true;setUI(true);setStatus('يستمع...');publishState();};
+  recognition.onresult=e=>{
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      let txt='';
+      for(let j=0;j<e.results[i].length;j++) txt+=' '+e.results[i][j].transcript;
+      if(e.results[i].isFinal){
+        const words=tokenise(txt);
+        buffer.push(...words);
+        if(buffer.length>BUF_MAX)buffer=buffer.slice(-BUF_MAX);
+        scheduleDrain();
+      } else {interim+=txt;}
+    }
+    if(interim.trim()){
+      debugEl.textContent='🎙 '+interim.trim();
+      debugEl.classList.add('vis');
+      clearTimeout(debugEl._t);
+      debugEl._t=setTimeout(()=>debugEl.classList.remove('vis'),2500);
+    }
+  };
+  recognition.onerror=e=>{
+    if(e.error==='no-speech'){dot.className=remoteConnected?'dot remote':'dot wait';setStatus('في انتظار الكلام...');}
+    if(e.error==='not-allowed'){alert('اسمح بالميكروفون');stopListen();}
+  };
+  recognition.onspeechstart=()=>{dot.className='dot on';setStatus('يستمع...');};
+  recognition.onspeechend  =()=>{dot.className=remoteConnected?'dot remote':'dot wait';setStatus('في انتظار الكلام...');};
+  recognition.onend=()=>{if(isListening)try{recognition.start();}catch(e){}};
+  recognition.start();
+}
+function stopListen(){
+  isListening=false;clearTimeout(drainTimer);
+  if(recognition){try{recognition.stop();}catch(e){}recognition=null;}
+  setUI(false);setStatus('موقف');
+  buffer=[];debugEl.classList.remove('vis');
+  publishState();
+}
+function setUI(on){
+  dot.className='dot'+(on?' on':remoteConnected?' remote':'');
+  micBtn.className=on?'btn stop':'btn';
+  micBtn.innerHTML=on
+    ?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>إيقاف`
+    :`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>ابدأ الاستماع`;
+}
+function setStatus(t){statusLbl.textContent=t;}
+
+// ══════════════════════════════════════════════════════════
+//  VIEWS
+// ══════════════════════════════════════════════════════════
+function showPrompter(){
+  build();
+  editPanel.classList.remove('vis');
+  setupPanel.classList.remove('vis');
+  prompterEl.classList.add('vis');
+  editBtn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>تعديل النص`;
+  setStatus('جاهز — اضغط مسافة لبدء الاستماع');
+}
+function showEdit(){
+  if(isListening)stopListen();
+  editPanel.classList.add('vis');
+  setupPanel.classList.remove('vis');
+  prompterEl.classList.remove('vis');
+  editBtn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>عرض المؤجِّه`;
+}
+function showSetup(){
+  editPanel.classList.remove('vis');
+  prompterEl.classList.remove('vis');
+  setupPanel.classList.add('vis');
+  // Pre-fill saved values
+  const savedKey=localStorage.getItem('ably_key')||'';
+  const savedSession=localStorage.getItem('ably_session')||'';
+  if(savedKey) ablyKeyInput.value=savedKey;
+  if(savedSession) sessionInput.value=savedSession;
+}
+
+// ══════════════════════════════════════════════════════════
+//  EVENTS
+// ══════════════════════════════════════════════════════════
+startBtn.addEventListener('click',showPrompter);
+clearBtn.addEventListener('click',()=>{ta.value='';ta.focus();});
+editBtn.addEventListener('click',()=>editPanel.classList.contains('vis')?showPrompter():showEdit());
+
+remoteBtn.addEventListener('click',()=>{
+  if(remoteConnected){disconnectAbly();return;}
+  showSetup();
+});
+
+connectRemoteBtn.addEventListener('click',()=>{
+  const key=ablyKeyInput.value.trim();
+  const session=sessionInput.value.trim();
+  if(!key||!session){alert('أدخل المفتاح وكود الجلسة');return;}
+  connectAbly(key,session);
+  setupPanel.classList.remove('vis');
+  editPanel.classList.add('vis');
+});
+cancelSetupBtn.addEventListener('click',()=>{
+  setupPanel.classList.remove('vis');
+  editPanel.classList.add('vis');
+});
+
+micBtn.addEventListener('click',()=>{
+  if(isListening){stopListen();return;}
+  if(editPanel.classList.contains('vis')||setupPanel.classList.contains('vis'))showPrompter();
+  if(!lines.length){setStatus('أضف نصاً أولاً');return;}
+  startListen();
+});
+
+mirrorBtn.addEventListener('click',()=>{mirrored=!mirrored;mirrorBtn.classList.toggle('active',mirrored);setTransform();});
+fup.addEventListener('click',()=>{fontSize=Math.min(fontSize+.3,7);applyFont();});
+fdn.addEventListener('click',()=>{fontSize=Math.max(fontSize-.3,1.4);applyFont();});
+function applyFont(){
+  lines.forEach(l=>l.el.style.fontSize=fontSize+'rem');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{recompute();kickRaf();}));
+}
+dialectSel.addEventListener('change',()=>{if(isListening){stopListen();setTimeout(startListen,300);}});
+tape.addEventListener('click',e=>{
+  const el=e.target.closest('.line');
+  if(el&&el.dataset.idx!==undefined){curLine=parseInt(el.dataset.idx);buffer=[];lastAdvance=0;applyHL(false);}
+});
+document.addEventListener('keydown',e=>{
+  if(e.target===ta||e.target===ablyKeyInput||e.target===sessionInput) return;
+  if(e.key===' '){e.preventDefault();micBtn.click();}
+  if(e.key==='ArrowUp'   &&curLine>0)            {curLine--;buffer=[];applyHL(false);}
+  if(e.key==='ArrowDown' &&curLine<lines.length-1){curLine++;buffer=[];applyHL(false);}
+  if(e.key==='Home'){curLine=0;buffer=[];applyHL(false);}
+  if(e.key==='End') {curLine=lines.length-1;buffer=[];applyHL(false);}
+  if(e.key==='e'||e.key==='E') editBtn.click();
+});
+window.addEventListener('resize',()=>{if(prompterEl.classList.contains('vis')){recompute();kickRaf();}});
+</script>
+</body>
+</html>

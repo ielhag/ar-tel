@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ريموت المؤجِّه</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24;
+    --gold:#c9a84c; --text:#f0ead8; --text-dim:rgba(240,234,216,0.4);
+    --border:rgba(201,168,76,0.18); --green:#5ce08a; --red:#e05c5c;
+    --blue:#5c9ce0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Tajawal',sans-serif;overflow:hidden;}
+  body{display:flex;flex-direction:column;}
+
+  /* SETUP SCREEN */
+  .setup{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:24px;gap:20px;}
+  .setup.hidden{display:none;}
+  .setup-card{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:28px 24px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px;}
+  .setup-card h1{font-size:1.4rem;color:var(--gold);text-align:center;}
+  .setup-card p{color:var(--text-dim);font-size:0.85rem;text-align:center;line-height:1.7;}
+  .setup-card label{color:var(--text-dim);font-size:0.8rem;display:block;margin-bottom:5px;}
+  .setup-card input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:1rem;padding:12px 14px;outline:none;direction:ltr;}
+  .setup-card input:focus{border-color:var(--gold);}
+  .setup-card input::placeholder{color:var(--text-dim);opacity:0.5;}
+  .hint{font-size:0.72rem;color:var(--text-dim);margin-top:-8px;}
+  .hint a{color:var(--blue);}
+
+  /* CONNECT BUTTON */
+  .connect-btn{width:100%;padding:14px;border-radius:12px;border:none;background:var(--gold);color:#0a0a0f;font-family:'Tajawal',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;}
+
+  /* REMOTE SCREEN */
+  .remote{display:none;flex-direction:column;height:100%;}
+  .remote.vis{display:flex;}
+
+  /* Status bar */
+  .rbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
+  .rbar-title{font-size:1rem;color:var(--gold);}
+  .conn-badge{display:flex;align-items:center;gap:6px;font-size:0.8rem;}
+  .conn-dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);}
+  .conn-dot.on{background:var(--green);box-shadow:0 0 6px var(--green);}
+
+  /* Current line display */
+  .now-playing{flex-shrink:0;background:var(--surface2);border-bottom:1px solid var(--border);padding:14px 18px;text-align:right;direction:rtl;}
+  .np-label{font-size:0.72rem;color:var(--text-dim);margin-bottom:6px;}
+  .np-text{font-size:1.1rem;color:var(--gold);line-height:1.5;min-height:1.5em;}
+  .np-next{font-size:0.85rem;color:var(--text-dim);margin-top:6px;min-height:1.2em;}
+
+  /* Progress */
+  .prog-wrap{display:flex;align-items:center;gap:10px;padding:10px 18px;flex-shrink:0;}
+  .prog-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .prog-fill{height:100%;background:var(--gold);width:0%;transition:width 0.3s;}
+  .prog-txt{font-size:0.78rem;color:var(--text-dim);white-space:nowrap;}
+
+  /* CONTROLS */
+  .controls{flex:1;display:flex;flex-direction:column;gap:14px;padding:16px 18px;justify-content:center;overflow:hidden;}
+
+  /* MIC button — big */
+  .mic-btn{
+    width:100%;padding:22px;border-radius:18px;border:2px solid var(--border);
+    background:var(--surface2);color:var(--text);
+    font-family:'Tajawal',sans-serif;font-size:1.15rem;font-weight:700;
+    cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  .mic-btn.listening{background:var(--red);border-color:var(--red);color:#fff;}
+  .mic-btn svg{width:22px;height:22px;}
+
+  /* NAV ROW */
+  .nav-row{display:flex;gap:12px;}
+  .nav-btn{
+    flex:1;padding:18px 10px;border-radius:14px;border:1px solid var(--border);
+    background:var(--surface2);color:var(--text);
+    font-family:'Tajawal',sans-serif;font-size:1rem;font-weight:500;
+    cursor:pointer;transition:all 0.18s;display:flex;flex-direction:column;align-items:center;gap:6px;
+  }
+  .nav-btn:active{background:rgba(201,168,76,0.2);border-color:var(--gold);}
+  .nav-btn svg{width:20px;height:20px;color:var(--gold);}
+  .nav-btn span{font-size:0.78rem;color:var(--text-dim);}
+
+  /* HOME row */
+  .home-row{display:flex;gap:12px;}
+  .home-btn{
+    flex:1;padding:14px 10px;border-radius:12px;border:1px solid var(--border);
+    background:var(--surface2);color:var(--text-dim);
+    font-family:'Tajawal',sans-serif;font-size:0.85rem;
+    cursor:pointer;transition:all 0.18s;
+  }
+  .home-btn:active{background:rgba(201,168,76,0.12);border-color:var(--gold);color:var(--gold);}
+
+  /* Disconnect */
+  .disc-btn{
+    padding:12px;border-radius:10px;border:1px solid rgba(224,92,92,0.3);
+    background:transparent;color:var(--red);
+    font-family:'Tajawal',sans-serif;font-size:0.82rem;cursor:pointer;
+    margin:0 18px 18px;flex-shrink:0;
+  }
+
+  /* Flash feedback */
+  .flash{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(201,168,76,0.9);color:#0a0a0f;border-radius:12px;
+    padding:12px 28px;font-size:1.1rem;font-weight:700;
+    pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:999;
+  }
+  .flash.vis{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div class="setup" id="setup">
+  <div class="setup-card">
+    <h1>📱 ريموت المؤجِّه</h1>
+    <p>أدخل نفس مفتاح Ably وكود الجلسة اللي أدخلتهم في شاشة الكمبيوتر</p>
+
+    <div>
+      <label>Ably API Key</label>
+      <input type="text" id="keyInput" placeholder="xxxxx.xxxxx:xxxxxxxxxxxxxxxxxxxx" autocomplete="off"/>
+    </div>
+
+    <div>
+      <label>كود الجلسة</label>
+      <input type="text" id="sessInput" placeholder="مثال: 1234" maxlength="20"/>
+    </div>
+
+    <button class="connect-btn" id="connectBtn">اتصل بالشاشة</button>
+    <div class="hint">المفتاح يُحفظ تلقائياً في هاتفك بعد أول اتصال</div>
+  </div>
+</div>
+
+<!-- REMOTE CONTROL -->
+<div class="remote" id="remote">
+
+  <div class="rbar">
+    <span class="rbar-title">🎬 ريموت المؤجِّه</span>
+    <div class="conn-badge">
+      <div class="conn-dot" id="connDot"></div>
+      <span id="connLabel">غير متصل</span>
+    </div>
+  </div>
+
+  <div class="now-playing">
+    <div class="np-label">السطر الحالي على الشاشة</div>
+    <div class="np-text" id="npText">—</div>
+    <div class="np-next" id="npNext"></div>
+  </div>
+
+  <div class="prog-wrap">
+    <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+    <span class="prog-txt" id="progTxt">—</span>
+  </div>
+
+  <div class="controls">
+
+    <!-- MIC TOGGLE -->
+    <button class="mic-btn" id="micBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      تشغيل الميكروفون
+    </button>
+
+    <!-- PREV / NEXT -->
+    <div class="nav-row">
+      <button class="nav-btn" id="prevBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>السطر السابق</span>
+      </button>
+      <button class="nav-btn" id="nextBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        <span>السطر التالي</span>
+      </button>
+    </div>
+
+    <!-- HOME / END -->
+    <div class="home-row">
+      <button class="home-btn" id="homeBtn">⏮ البداية</button>
+      <button class="home-btn" id="pingBtn">🔄 مزامنة</button>
+    </div>
+
+  </div>
+
+  <button class="disc-btn" id="discBtn">قطع الاتصال</button>
+
+</div>
+
+<div class="flash" id="flash"></div>
+
+<script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+<script>
+const setupEl  = document.getElementById('setup');
+const remoteEl = document.getElementById('remote');
+const keyInput = document.getElementById('keyInput');
+const sessInput= document.getElementById('sessInput');
+const connectBtn=document.getElementById('connectBtn');
+const connDot  = document.getElementById('connDot');
+const connLabel= document.getElementById('connLabel');
+const micBtn   = document.getElementById('micBtn');
+const prevBtn  = document.getElementById('prevBtn');
+const nextBtn  = document.getElementById('nextBtn');
+const homeBtn  = document.getElementById('homeBtn');
+const pingBtn  = document.getElementById('pingBtn');
+const discBtn  = document.getElementById('discBtn');
+const npText   = document.getElementById('npText');
+const npNext   = document.getElementById('npNext');
+const progFill = document.getElementById('progFill');
+const progTxt  = document.getElementById('progTxt');
+const flashEl  = document.getElementById('flash');
+
+let ablyClient  = null;
+let ablyChannel = null;
+let isListening = false; // tracks what the SCREEN says
+
+// Pre-fill saved values
+const savedKey  = localStorage.getItem('remote_ably_key')||'';
+const savedSess = localStorage.getItem('remote_ably_sess')||'';
+if(savedKey) keyInput.value=savedKey;
+if(savedSess) sessInput.value=savedSess;
+
+// ── CONNECT ───────────────────────────────────────────────
+connectBtn.addEventListener('click',()=>{
+  const key  = keyInput.value.trim();
+  const sess = sessInput.value.trim();
+  if(!key||!sess){alert('أدخل المفتاح وكود الجلسة');return;}
+  connect(key,sess);
+});
+
+function connect(apiKey, sessionCode){
+  if(ablyClient){try{ablyClient.close();}catch(e){}}
+
+  connectBtn.textContent='جاري الاتصال...';
+  connectBtn.disabled=true;
+
+  ablyClient=new Ably.Realtime({key:apiKey,autoConnect:true});
+  const channelName='teleprompter-'+sessionCode.trim();
+  ablyChannel=ablyClient.channels.get(channelName);
+
+  ablyClient.connection.on('connected',()=>{
+    localStorage.setItem('remote_ably_key',apiKey);
+    localStorage.setItem('remote_ably_sess',sessionCode);
+
+    setupEl.classList.add('hidden');
+    remoteEl.classList.add('vis');
+    connDot.classList.add('on');
+    connLabel.textContent='متصل ✓';
+
+    // Ask screen for current state
+    send({action:'ping'});
+  });
+
+  ablyClient.connection.on('disconnected',()=>{
+    connDot.classList.remove('on');
+    connLabel.textContent='انقطع الاتصال';
+  });
+
+  ablyClient.connection.on('failed',()=>{
+    connectBtn.textContent='اتصل بالشاشة';
+    connectBtn.disabled=false;
+    alert('فشل الاتصال — تحقق من مفتاح Ably');
+  });
+
+  // Listen for state updates FROM the screen
+  ablyChannel.subscribe('state',(msg)=>{
+    updateState(msg.data);
+  });
+}
+
+function updateState(state){
+  if(!state) return;
+  npText.textContent = state.preview || '—';
+  npNext.textContent = state.nextPreview ? '⬇ ' + state.nextPreview : '';
+  const pct = state.total > 0 ? Math.round(state.curLine/state.total*100) : 0;
+  progFill.style.width = pct+'%';
+  progTxt.textContent  = state.curLine+' / '+state.total;
+  isListening = state.listening;
+  updateMicBtn();
+}
+
+function updateMicBtn(){
+  micBtn.className = isListening ? 'mic-btn listening' : 'mic-btn';
+  micBtn.innerHTML = isListening
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/></svg>إيقاف الميكروفون`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>تشغيل الميكروفون`;
+}
+
+// ── SEND COMMAND ──────────────────────────────────────────
+function send(data){
+  if(!ablyChannel){alert('غير متصل');return;}
+  ablyChannel.publish('cmd',data).catch(()=>{});
+}
+
+function flash(msg){
+  flashEl.textContent=msg;
+  flashEl.classList.add('vis');
+  clearTimeout(flashEl._t);
+  flashEl._t=setTimeout(()=>flashEl.classList.remove('vis'),600);
+}
+
+// ── BUTTON EVENTS ─────────────────────────────────────────
+micBtn.addEventListener('click',()=>{
+  send({action:'toggle_mic'});
+  isListening=!isListening;
+  updateMicBtn();
+  flash(isListening?'🎙 شغّال':'⏹ وقف');
+});
+
+nextBtn.addEventListener('click',()=>{
+  send({action:'next'});
+  flash('⬇ التالي');
+});
+
+prevBtn.addEventListener('click',()=>{
+  send({action:'prev'});
+  flash('⬆ السابق');
+});
+
+homeBtn.addEventListener('click',()=>{
+  send({action:'home'});
+  flash('⏮ البداية');
+});
+
+pingBtn.addEventListener('click',()=>{
+  send({action:'ping'});
+  flash('🔄');
+});
+
+discBtn.addEventListener('click',()=>{
+  if(ablyClient){try{ablyClient.close();}catch(e){}ablyClient=null;ablyChannel=null;}
+  remoteEl.classList.remove('vis');
+  setupEl.classList.remove('hidden');
+  connectBtn.textContent='اتصل بالشاشة';
+  connectBtn.disabled=false;
+  connDot.classList.remove('on');
+  connLabel.textContent='غير متصل';
+});
+</script>
+</body>
+</html>
